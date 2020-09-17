@@ -19,6 +19,7 @@ from suds.wsse import Security, UsernameToken
 
 # Define Gobal Variables
 ConfigFileName = "CoverityCreateUser.cfg"
+pageSizeToUse = 50
 
 defectSvcClient = ""
 configSvcClient = ""
@@ -135,6 +136,12 @@ def LoadConfigurationInfo():
         return False
 
 
+def OverwriteConsoleOutput(stringToPrint):
+    """Method to overwrite the console so it does not scroll off the page, like a progress bar so to speak."""
+    sys.stdout.write("\r" + str(stringToPrint))
+    sys.stdout.flush()
+
+
 def InitDefectClient():
     """Method used to initialize the DefectServiceClient and connect to the Coverity server."""
 
@@ -175,8 +182,8 @@ def SearchByUsername(usernameToSearchFor):
         userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
         userIdDO.namePattern = usernameToSearchFor
         pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
-        pageSpecDO.pageSize=10
-        pageSpecDO.startIndex=0
+        pageSpecDO.pageSize = pageSizeToUse
+        pageSpecDO.startIndex = 0
 
         v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
@@ -194,6 +201,74 @@ def SearchByUsername(usernameToSearchFor):
             return False
         else:
             print ("WARNING: User [" + usernameToSearchFor + "] was NOT found.")
+            return False
+    else:
+        if (configSvcClient == ""):
+            print ("FAILURE: Configuration Service Client NOT initialized so fail.")
+        
+        if (defectSvcClient == ""):
+            print ("FAILURE: Defect Service Client NOT initialized so fail.")
+
+        raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
+
+
+def SearchByEmail(emailToSearchFor):
+    """Method used to search for a specified user in the list of all Coverity users.
+    
+    NOTE: You can use wildcards like *mtol* to find the user."""
+
+    if (defectSvcClient == ""):
+        InitDefectClient()
+    
+    if (configSvcClient == ""):
+        InitConfigClient()
+
+    print ("")
+    print ("Searching for email: " + emailToSearchFor)
+
+    if (configSvcClient != "" and defectSvcClient != ""):
+        userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
+        userIdDO.namePattern = "*"
+        pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
+
+        # Call with a single record (pageSize = 1) to get fast and get the totalNumberOfRecords
+        pageSpecDO.pageSize = 1
+        pageSpecDO.startIndex = 0
+        v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+
+        print ("Processing [" + str(v.totalNumberOfRecords) + "] User records...")
+
+        userFound = False
+        userCount = 0
+        if (v.totalNumberOfRecords > 0):
+            # Get FIRST batch of user records
+            pageSpecDO.pageSize = pageSizeToUse
+            pageSpecDO.startIndex = 0
+            v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+
+            while (hasattr(v, 'users')):
+                for u in v.users:
+                    userCount += 1
+                    OverwriteConsoleOutput("   Processing # " + str(userCount))
+
+                    if (hasattr(u, 'email') and str(u.email).lower() == emailToSearchFor.lower()):
+                        print ("")
+                        print ("   Email address FOUND.  Username: [" + str(u.username) + "]")
+                        userFound = True
+                        break
+
+                if (userFound):
+                    break
+
+                # Get NEXT batch of user records based on pageSizeToUse
+                pageSpecDO.startIndex += pageSizeToUse
+                v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+
+        if (userFound):
+            return True
+        else:
+            print ("")
+            print ("WARNING: Email [" + emailToSearchFor + "] was NOT found.")
             return False
     else:
         if (configSvcClient == ""):
@@ -238,18 +313,22 @@ ClearScreen()
 if (LoadConfigurationInfo()):
 
     try:
+        SearchByEmail("matt_tolson@mcafee.com")
+
         # Test getting a single user's information
         GetUserInfo("mtolson")
 
+        SearchByEmail("mtolson@mcafee.com")
+
         # Try doing some searching of users
-        if (SearchByUsername("tolsonm") == True):
-            print ("Success!!!!!")
+        # if (SearchByUsername("tolsonm") == True):
+        #     print ("Success!!!!!")
 
-        if (SearchByUsername("*tolson*") == True):
-            print ("Success!!!!!")
+        # if (SearchByUsername("*tolson*") == True):
+        #     print ("Success!!!!!")
 
-        if (SearchByUsername("*") == True):
-            print ("Success!!!!!")
+        # if (SearchByUsername("*") == True):
+        #     print ("Success!!!!!")
     except Exception as ex:
         print ("")
         print ("Something went wrong so existing. Exception: " + str(ex))
