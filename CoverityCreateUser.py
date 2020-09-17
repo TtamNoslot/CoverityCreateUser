@@ -96,12 +96,12 @@ def ReadStrFromConfigFile(configfile, section, option):
     if (config.has_option(section, option)):
         return config.get(section, option, raw=True)
     else:
-        print("FAILURE: Either the section specified or the option specified was NOT found in config file so fail.")
-        sys.exit(1)
+        raise Exception("FAILURE: Either section [" + section + "] or option [" + option + "] was NOT found in config file so fail.")
 
 
 def LoadConfigurationInfo():
-    """Method used to load the configuration settings from the ConfigFileName file."""
+    """Method used to load the configuration settings from the ConfigFileName file.
+    Returns True if all is successful or False if there were issues reading in the properties."""
     global covUser
     global covPass
     global covServer
@@ -111,27 +111,32 @@ def LoadConfigurationInfo():
         print("Configuration file found so loading configuration...")
         print ("")
 
-        covUser = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityUser')
-        print ("      * Coverity Username : " + covUser)
-        print ("")
+        try:
+            covUser = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityUser')
+            print ("      * Coverity Username : " + covUser)
+            print ("")
 
-        covPass = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityPassword')
-        print ("      * Coverity Password : " + covPass)
-        print ("")
+            covPass = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityPassword')
+            print ("      * Coverity Password : " + covPass)
+            print ("")
 
-        covServer = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityServer')
-        print ("      * Coverity Server   : " + covServer)
-        print ("")
+            covServer = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityServer')
+            print ("      * Coverity Server   : " + covServer)
+            print ("")
 
-        covPort = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityPort')
-        print ("      * Coverity Port     : " + covPort)
-        print ("")
+            covPort = ReadStrFromConfigFile(ConfigFileName, 'App Settings', 'CoverityPort')
+            print ("      * Coverity Port     : " + covPort)
+            print ("")
 
-        print ("Done Loading Configuration Settings")
+            print ("Done Loading Configuration Settings")
+            return True
+        except Exception as ex:
+            print (ex)
+            return False
 
     else:
         print("FAILURE: Configuration file NOT found so failing")
-        sys.exit(1)
+        return False
 
 
 def InitDefectClient():
@@ -219,27 +224,29 @@ def GetUser(userToGet):
 ClearScreen()
 
 # Load up the configuration (MUST BE First)
-LoadConfigurationInfo()
+if (LoadConfigurationInfo()):
 
-print ("")
+    # Connect to Coverity Server
+    print ("")
+    InitDefectClient()
+    print ("")
+    InitConfigClient()
 
-# Connect to Coverity Server
-InitDefectClient()
-InitConfigClient()
+    # Test getting a single user's information
+    print ("")
+    GetUser("mtolson")
 
-print ("")
-GetUser("mtolson")
+    # Try doing some searching of users
+    print ("")
+    if (SearchUsers("tolsonm") == True):
+        print ("Success!!!!!")
 
-print ("")
-if (SearchUsers("tolsonm") == True):
-    print ("Success!!!!!")
+    print ("")
+    if (SearchUsers("*tolson*") == True):
+        print ("Success!!!!!")
 
-print ("")
-if (SearchUsers("*tolson*") == True):
-    print ("Success!!!!!")
-
-print ("")
-if (SearchUsers("*") == True):
-    print ("Success!!!!!")
+    print ("")
+    if (SearchUsers("*") == True):
+        print ("Success!!!!!")
 
 print ("Done.")
