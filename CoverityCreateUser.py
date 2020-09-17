@@ -290,12 +290,19 @@ def GetUserInfo(userToGet):
         print ("")
         print("Searching for user: " + userToGet)
 
-        v = configSvcClient.client.service.getUser(userToGet)
+        try:
+            v = configSvcClient.client.service.getUser(userToGet)
 
-        print ("   Username : " + str(v.username))
-        print ("   Domain   : " + str(v.domain.name))
-        print ("   Email    : " + str(v.email))
-        print ("   Groups   : " + str(v.groups))
+            print ("   Username : " + str(v.username))
+            print ("   Domain   : " + str(v.domain.name))
+            print ("   Email    : " + str(v.email))
+            print ("   Groups   : " + str(v.groups))
+        except Exception as ex:
+            if ("No user found for user name " + userToGet + "." in str(ex)):
+                print ("")
+                print ("WARNING: User [" + userToGet + "] was NOT found.")
+            else:
+                raise Exception(ex)
     else:
         print ("")
         print ("FAILURE: Configuration Service Client NOT initialized so fail.")
@@ -313,22 +320,29 @@ ClearScreen()
 if (LoadConfigurationInfo()):
 
     try:
-        SearchByEmail("matt_tolson@mcafee.com")
-
         # Test getting a single user's information
-        GetUserInfo("mtolson")
+        if (SearchByUsername("mtolson") == True):
+            GetUserInfo("mtolson")
 
-        SearchByEmail("mtolson@mcafee.com")
+        if (SearchByUsername("mbtolson") == True):
+            GetUserInfo("mbtolson")
 
-        # Try doing some searching of users
-        # if (SearchByUsername("tolsonm") == True):
-        #     print ("Success!!!!!")
+        # Search for email addresses
+        if (SearchByEmail("matt_tolson@mcafee.com") == True):
+            print ("Success!!!!!")
 
-        # if (SearchByUsername("*tolson*") == True):
-        #     print ("Success!!!!!")
+        if (SearchByEmail("mtolson@mcafee.com") == True):
+            print ("Success!!!!!")
 
-        # if (SearchByUsername("*") == True):
-        #     print ("Success!!!!!")
+        # Search for users
+        if (SearchByUsername("tolsonm") == True):
+            print ("Success!!!!!")
+
+        if (SearchByUsername("*tolson*") == True):
+            print ("Success!!!!!")
+
+        if (SearchByUsername("mtol*") == True):
+            print ("Success!!!!!")
     except Exception as ex:
         print ("")
         print ("Something went wrong so existing. Exception: " + str(ex))
