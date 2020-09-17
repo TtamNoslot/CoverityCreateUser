@@ -6,31 +6,27 @@ that use the various Physical Build servers.
 """
 
 # Load the required imports
-import sys
-import csv
-from os import path, system, name
 import configparser
-import requests
+import csv
 import json
+import logging  # For basic logging of WebClient
+import sys
+from os import name, path, system
+
+import requests
 from suds.client import Client
 from suds.wsse import Security, UsernameToken
 
-# For basic logging
-import logging
+# Define Gobal Variables
+ConfigFileName = "CoverityCreateUser.cfg"
+
+defectSvcClient = ""
+configSvcClient = ""
 
 logging.basicConfig()
 # Uncomment to debug SOAP XML
 # logging.getLogger('suds.client').setLevel(logging.DEBUG)
 # logging.getLogger('suds.transport').setLevel(logging.DEBUG)
-
-# getFileContents result requires decompress and decoding
-import base64, zlib
-
-# Define Gobal Variables
-ConfigFileName = "CoverityCreateUser.cfg"
-
-defectServiceClient = ""
-configServiceClient = ""
 
 
 ###################################################
@@ -142,38 +138,47 @@ def LoadConfigurationInfo():
 def InitDefectClient():
     """Method used to initialize the DefectServiceClient and connect to the Coverity server."""
 
-    global defectServiceClient
+    global defectSvcClient
 
+    print ("")
     print ("Setting up the Defect Service Client...")
 
-    defectServiceClient = DefectServiceClient(covServer, covPort, True, covUser, covPass)
+    defectSvcClient = DefectServiceClient(covServer, covPort, True, covUser, covPass)
 
 
 def InitConfigClient():
     """Method used to initialize the ConfigServiceClient and connect to the Coverity server."""
 
-    global configServiceClient
+    global configSvcClient
 
+    print ("")
     print ("Setting up the Configuration Service Client...")
 
-    configServiceClient = ConfigServiceClient(covServer, covPort, True, covUser, covPass)
+    configSvcClient = ConfigServiceClient(covServer, covPort, True, covUser, covPass)
 
 
-def SearchUsers(userToSearchFor):
+def SearchByUsername(usernameToSearchFor):
     """Method used to search for a specified user in the list of all Coverity users.
     
     NOTE: You can use wildcards like *mtol* to find the user."""
 
-    print ("Searching for user: " + userToSearchFor)
+    if (defectSvcClient == ""):
+        InitDefectClient()
+    
+    if (configSvcClient == ""):
+        InitConfigClient()
 
-    if (configServiceClient != "" and defectServiceClient != ""):
-        userIdDO = configServiceClient.client.factory.create('userFilterSpecDataObj')
-        userIdDO.namePattern = userToSearchFor
-        pageSpecDO = defectServiceClient.client.factory.create('pageSpecDataObj')
+    print ("")
+    print ("Searching for user: " + usernameToSearchFor)
+
+    if (configSvcClient != "" and defectSvcClient != ""):
+        userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
+        userIdDO.namePattern = usernameToSearchFor
+        pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
         pageSpecDO.pageSize=10
         pageSpecDO.startIndex=0
 
-        v = configServiceClient.client.service.getUsers(userIdDO, pageSpecDO)
+        v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
         if (v.totalNumberOfRecords == 1):
             print ("   User was found. Username: " + str(v.users[0].username))
@@ -188,32 +193,38 @@ def SearchUsers(userToSearchFor):
             print ("WARNING: Multiple Users were found.")
             return False
         else:
-            print ("WARNING: User [" + userToSearchFor + "] was NOT found.")
+            print ("WARNING: User [" + usernameToSearchFor + "] was NOT found.")
             return False
     else:
-        if (configServiceClient == ""):
+        if (configSvcClient == ""):
             print ("FAILURE: Configuration Service Client NOT initialized so fail.")
         
-        if (defectServiceClient == ""):
+        if (defectSvcClient == ""):
             print ("FAILURE: Defect Service Client NOT initialized so fail.")
 
-        sys.exit(1)
+        raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
 
 
-def GetUser(userToGet):
+def GetUserInfo(userToGet):
     """Method to get the specified user information from Coverity."""
 
-    if (configServiceClient != ""):
+    if (configSvcClient == ""):
+        InitConfigClient()
+
+    if (configSvcClient != ""):
+        print ("")
         print("Searching for user: " + userToGet)
 
-        v = configServiceClient.client.service.getUser(userToGet)
+        v = configSvcClient.client.service.getUser(userToGet)
 
         print ("   Username : " + str(v.username))
+        print ("   Domain   : " + str(v.domain.name))
         print ("   Email    : " + str(v.email))
         print ("   Groups   : " + str(v.groups))
     else:
+        print ("")
         print ("FAILURE: Configuration Service Client NOT initialized so fail.")
-        sys.exit(1)
+        raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
 
 
 ###################################################
@@ -226,27 +237,21 @@ ClearScreen()
 # Load up the configuration (MUST BE First)
 if (LoadConfigurationInfo()):
 
-    # Connect to Coverity Server
-    print ("")
-    InitDefectClient()
-    print ("")
-    InitConfigClient()
+    try:
+        # Test getting a single user's information
+        GetUserInfo("mtolson")
 
-    # Test getting a single user's information
-    print ("")
-    GetUser("mtolson")
+        # Try doing some searching of users
+        if (SearchByUsername("tolsonm") == True):
+            print ("Success!!!!!")
 
-    # Try doing some searching of users
-    print ("")
-    if (SearchUsers("tolsonm") == True):
-        print ("Success!!!!!")
+        if (SearchByUsername("*tolson*") == True):
+            print ("Success!!!!!")
 
-    print ("")
-    if (SearchUsers("*tolson*") == True):
-        print ("Success!!!!!")
-
-    print ("")
-    if (SearchUsers("*") == True):
-        print ("Success!!!!!")
+        if (SearchByUsername("*") == True):
+            print ("Success!!!!!")
+    except Exception as ex:
+        print ("")
+        print ("Something went wrong so existing. Exception: " + str(ex))
 
 print ("Done.")
