@@ -182,6 +182,7 @@ def SearchByUsername(usernameToSearchFor):
         userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
         userIdDO.namePattern = usernameToSearchFor
         pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
+        pageSpecDO.sortAscending = True
         pageSpecDO.pageSize = pageSizeToUse
         pageSpecDO.startIndex = 0
 
@@ -230,6 +231,8 @@ def SearchByEmail(emailToSearchFor):
         userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
         userIdDO.namePattern = "*"
         pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
+        pageSpecDO.sortAscending = True
+        pageSpecDO.sortField = "email"
 
         # Call with a single record (pageSize = 1) to get fast and get the totalNumberOfRecords
         pageSpecDO.pageSize = 1
