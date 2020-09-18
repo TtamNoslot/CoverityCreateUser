@@ -192,16 +192,16 @@ def SearchByUsername(usernameToSearchFor):
             print ("   User was found. Username: " + str(v.users[0].username))
             return True
         elif (v.totalNumberOfRecords > 1):
-            print ("------------------------------------------")
-            print ("Total Users Found: " + str(v.totalNumberOfRecords))
-            print ("------------------------------------------")
-            print ("WARNING: Multiple Users were found as follows:")
+            print ("   ------------------------------------------")
+            print ("   Total Users Found: " + str(v.totalNumberOfRecords))
+            print ("   ------------------------------------------")
+            print ("   WARNING: Multiple Users were found as follows:")
             for u in v.users:
                 print ("   Username: [" + str(u.username) + "]")
-            print ("WARNING: Multiple Users were found.")
+            print ("   WARNING: Multiple Users were found.")
             return False
         else:
-            print ("WARNING: User [" + usernameToSearchFor + "] was NOT found.")
+            print ("   WARNING: User [" + usernameToSearchFor + "] was NOT found.")
             return False
     else:
         if (configSvcClient == ""):
@@ -239,7 +239,7 @@ def SearchByEmail(emailToSearchFor):
         pageSpecDO.startIndex = 0
         v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
-        print ("Processing [" + str(v.totalNumberOfRecords) + "] User records...")
+        print ("   Processing [" + str(v.totalNumberOfRecords) + "] User records...")
 
         userFound = False
         userCount = 0
@@ -256,7 +256,7 @@ def SearchByEmail(emailToSearchFor):
 
                     if (hasattr(u, 'email') and str(u.email).lower() == emailToSearchFor.lower()):
                         print ("")
-                        print ("   Email address FOUND.  Username: [" + str(u.username) + "]")
+                        print ("      Email address FOUND.  Username: [" + str(u.username) + "]")
                         userFound = True
                         break
 
@@ -271,7 +271,7 @@ def SearchByEmail(emailToSearchFor):
             return True
         else:
             print ("")
-            print ("WARNING: Email [" + emailToSearchFor + "] was NOT found.")
+            print ("   WARNING: Email [" + emailToSearchFor + "] was NOT found.")
             return False
     else:
         if (configSvcClient == ""):
@@ -323,29 +323,21 @@ ClearScreen()
 if (LoadConfigurationInfo()):
 
     try:
-        # Test getting a single user's information
-        if (SearchByUsername("mtolson") == True):
-            GetUserInfo("mtolson")
+        userToFind = input("Enter the username or email address you wish to find: ")
 
-        if (SearchByUsername("mbtolson") == True):
-            GetUserInfo("mbtolson")
+        userNeedsToBeCreated = True
+        if (len(userToFind) > 0):
+            if ("@" in userToFind and "." in userToFind):
+                if(SearchByEmail(userToFind)):
+                    print ("Found user via email address.")
+                    userNeedsToBeCreated = False
+            else:
+                if (SearchByUsername(userToFind)):
+                    print ("Found user via username.")
+                    userNeedsToBeCreated = False
+                    GetUserInfo(userToFind)
 
-        # Search for email addresses
-        if (SearchByEmail("matt_tolson@mcafee.com") == True):
-            print ("Success!!!!!")
 
-        if (SearchByEmail("mtolson@mcafee.com") == True):
-            print ("Success!!!!!")
-
-        # Search for users
-        if (SearchByUsername("tolsonm") == True):
-            print ("Success!!!!!")
-
-        if (SearchByUsername("*tolson*") == True):
-            print ("Success!!!!!")
-
-        if (SearchByUsername("mtol*") == True):
-            print ("Success!!!!!")
     except Exception as ex:
         print ("")
         print ("Something went wrong so existing. Exception: " + str(ex))
