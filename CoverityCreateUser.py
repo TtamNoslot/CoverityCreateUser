@@ -216,9 +216,7 @@ def SearchByUsername(usernameToSearchFor):
 
 
 def SearchByEmail(emailToSearchFor):
-    """Method used to search for a specified user in the list of all Coverity users.
-    
-    NOTE: You can use wildcards like *mtol* to find the user."""
+    """Method used to search for a specified email in the list of all Coverity users."""
 
     if (defectSvcClient == ""):
         InitDefectClient()
@@ -232,6 +230,7 @@ def SearchByEmail(emailToSearchFor):
     if (configSvcClient != "" and defectSvcClient != ""):
         userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
         userIdDO.namePattern = "*"
+
         pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
         pageSpecDO.sortAscending = True
         pageSpecDO.sortField = "email"
@@ -321,8 +320,10 @@ def GetUserInfo(userToGet):
         raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
 
 
-def GetCoverityRolesFromServer():
-    """Method to get the the Coverity Groups from the server."""
+def GetCoverityRolesFromServer(RoleToLoad):
+    """Method to get the the Coverity Groups from the server.
+    
+    NOTE: You can use wildcards like Endpoint* or *Manager to find the Role."""
 
     if (defectSvcClient == ""):
         InitDefectClient()
@@ -335,7 +336,7 @@ def GetCoverityRolesFromServer():
 
     if (configSvcClient != "" and defectSvcClient != ""):
         groupIdDO = configSvcClient.client.factory.create('groupFilterSpecDataObj')
-        groupIdDO.namePattern = "*"
+        groupIdDO.namePattern = RoleToLoad
 
         pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
         # pageSpecDO.sortAscending = True
@@ -349,7 +350,8 @@ def GetCoverityRolesFromServer():
             for group in v.groups:
                 if(str(group.name.name).lower() != "Users".lower()):
                     # print ("      Group: [" + str(group.name.name) + "]")
-                    CoverityRoleList.append(group.name)
+                    CoverityRoleList.append(group.name.name)
+            CoverityRoleList.sort()
             return True
         else:
             print ("      WARNING: NO groups were found.")
@@ -364,6 +366,39 @@ def GetCoverityRolesFromServer():
         raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
 
 
+def GetMaxStringLengthOfCoverityRole():
+    """Method that will loop through CoverityRoleList looking for the max string length and return that."""
+    maxLength = 0
+
+    for role in CoverityRoleList:
+        # print ("Role: " + str(role) + " Length: " + str(len(role)))
+        if (len(role) > maxLength):
+            maxLength = len(role)
+    
+    return maxLength
+
+
+def PrintCoverityRolesList(numberOfColumns):
+    """Method used to print out the complete list of Coverity Roles based on the nubmer of columns passed in."""
+
+    # Should be max String length + 6 ([###] ) + 1 extra space = StrLength + 7
+    paddingLength = GetMaxStringLengthOfCoverityRole() + 7
+
+    print ("-------------------")
+    print ("Coverity Roles List")
+    print ("-------------------")
+
+    printReturn = 0
+    roleCount = 0
+    for role in CoverityRoleList:
+        print (str("[" + str(roleCount).rjust(3, '0') + "] " + str(role)).ljust(paddingLength, ' '), end='')
+        roleCount += 1
+        printReturn += 1
+        if (printReturn >= numberOfColumns):
+            printReturn = 0
+            print ("")
+
+
 def GetCoverityRoleFromUser(userBeingCreated):
     """Method to prompt and get the users Coverity Role and validate against CoverityRoleList list."""
 
@@ -374,15 +409,9 @@ def GetCoverityRoleFromUser(userBeingCreated):
 
         while (RoleisValid == False):
             ClearScreen()
-            print ("------------------")
-            print ("Coverity Role List")
-            print ("------------------")
-            roleCount = 0
-            CoverityRoleList.sort
-            for role in CoverityRoleList:
-                print ("[" + str(roleCount) + "] " + str(role.name))
-                roleCount += 1
-        
+
+            PrintCoverityRolesList(4)
+
             print ("----------------------------------------------------------------------------------")
             print ("Using the number in [] enter the ONE Coverity Role you want to add.")
             print ("NOTE: Users group is automatically added and you get ONE more you can add.")
@@ -395,7 +424,7 @@ def GetCoverityRoleFromUser(userBeingCreated):
 
             if(int(roleIDToAdd) <= len(CoverityRoleList)):
                 if (CoverityRoleList[int(roleIDToAdd)] not in RolesToUse):
-                    RolesToUse.append(CoverityRoleList[int(roleIDToAdd)].name)
+                    RolesToUse.append(CoverityRoleList[int(roleIDToAdd)])
                     RoleisValid = True
         
         print ("")
@@ -492,8 +521,9 @@ if (LoadConfigurationInfo()):
         if (userNeedsToBeCreated):
             print ("")
             print ("User was NOT found so creating user...")
-            if(GetCoverityRolesFromServer()):
-                CreateCoverityUser(userToFind)
+            if(GetCoverityRolesFromServer("*")):
+                if (len(CoverityRoleList) > 0):
+                    CreateCoverityUser(userToFind)
 
     except Exception as ex:
         print ("")
