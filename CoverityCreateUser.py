@@ -29,6 +29,8 @@ logging.basicConfig()
 # logging.getLogger('suds.client').setLevel(logging.DEBUG)
 # logging.getLogger('suds.transport').setLevel(logging.DEBUG)
 
+CoverityRoleList = []
+
 
 ###################################################
 # Class definitions
@@ -319,6 +321,93 @@ def GetUserInfo(userToGet):
         raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
 
 
+def GetCoverityRolesFromServer():
+    """Method to get the the Coverity Groups from the server."""
+
+    if (defectSvcClient == ""):
+        InitDefectClient()
+    
+    if (configSvcClient == ""):
+        InitConfigClient()
+
+    print ("")
+    print ("   Loading Coverity Groups from server.")
+
+    if (configSvcClient != "" and defectSvcClient != ""):
+        groupIdDO = configSvcClient.client.factory.create('groupFilterSpecDataObj')
+        groupIdDO.namePattern = "*"
+
+        pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
+        # pageSpecDO.sortAscending = True
+        # pageSpecDO.sortField = "name"
+        pageSpecDO.pageSize = pageSizeToUse
+        pageSpecDO.startIndex = 0
+
+        v = configSvcClient.client.service.getGroups(groupIdDO, pageSpecDO)
+
+        if (v.totalNumberOfRecords > 1):
+            for group in v.groups:
+                if(str(group.name.name).lower() != "Users".lower()):
+                    # print ("      Group: [" + str(group.name.name) + "]")
+                    CoverityRoleList.append(group.name)
+            return True
+        else:
+            print ("      WARNING: NO groups were found.")
+            return False
+    else:
+        if (configSvcClient == ""):
+            print ("FAILURE: Configuration Service Client NOT initialized so fail.")
+        
+        if (defectSvcClient == ""):
+            print ("FAILURE: Defect Service Client NOT initialized so fail.")
+
+        raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
+
+
+def GetCoverityRoleFromUser(userBeingCreated):
+    """Method to prompt and get the users Coverity Role and validate against CoverityRoleList list."""
+
+    DoneAssigningRole = False
+    while (DoneAssigningRole == False):
+        RoleisValid = False
+        RolesToUse = ["Users"]
+
+        while (RoleisValid == False):
+            ClearScreen()
+            print ("------------------")
+            print ("Coverity Role List")
+            print ("------------------")
+            roleCount = 0
+            CoverityRoleList.sort
+            for role in CoverityRoleList:
+                print ("[" + str(roleCount) + "] " + str(role.name))
+                roleCount += 1
+        
+            print ("----------------------------------------------------------------------------------")
+            print ("Using the number in [] enter the ONE Coverity Role you want to add.")
+            print ("NOTE: Users group is automatically added and you get ONE more you can add.")
+            print ("----------------------------------------------------------------------------------")
+
+            roleIDToAdd = input("Enter the Coverity Role Number for [" + userBeingCreated + "] (Enter when done): ")
+
+            if (roleIDToAdd.lower() == "".lower()):
+                break
+
+            if(int(roleIDToAdd) <= len(CoverityRoleList)):
+                if (CoverityRoleList[int(roleIDToAdd)] not in RolesToUse):
+                    RolesToUse.append(CoverityRoleList[int(roleIDToAdd)].name)
+                    RoleisValid = True
+        
+        print ("")
+        print ("Assigned Roles: " + str(RolesToUse))
+        print ("")
+        areWeDone = input ("Does the above look correct (Y or N)? ")
+        if (areWeDone.lower() == "Y".lower()):
+            DoneAssigningRole = True
+
+    return RolesToUse
+
+
 def CreateCoverityUser(userToCreate):
     """Method to create a Coverity User."""
 
@@ -333,14 +422,14 @@ def CreateCoverityUser(userToCreate):
             if ("@" in userToCreate and "." in userToCreate):
                 userToCreate = input("Enter CORPZONE username to be created: ")
             
-            userBU = input("Enter the user\'s Business Unit: ")
-            userRole = input("Enter the user\'s Role: ")
+            userRole = GetCoverityRoleFromUser(userToCreate)
+            # userRole.append("Users")
 
             domainIdDO = configSvcClient.client.factory.create('serverDomainIdDataObj')
             domainIdDO.name = "corpzone"
 
             groupIdDO = configSvcClient.client.factory.create('groupIdDataObj')
-            groupIdDO.name = [ "Users", userBU + " " + userRole ]
+            groupIdDO.name = userRole
 
             userIdDO = configSvcClient.client.factory.create('userSpecDataObj')
             userIdDO.username = userToCreate
@@ -364,9 +453,11 @@ def PrintServerInfo():
     """Method used to print the Coverity information from the CFG file."""
     print ("")
     print ("-----------------------------------------------------------------")
-    print ("Coverity Server Name: " + covServer)
-    print ("Coverity Server Port: " + covPort)
-    print ("Coverity Server User: " + covUser)
+    print ("Coverity Settings")
+    print ("-----------------------------------------------------------------")
+    print ("Server Name : " + covServer)
+    print ("Server Port : " + covPort)
+    print ("Server User : " + covUser)
     print ("-----------------------------------------------------------------")
 
 
@@ -399,8 +490,10 @@ if (LoadConfigurationInfo()):
                     GetUserInfo(userToFind)
 
         if (userNeedsToBeCreated):
+            print ("")
             print ("User was NOT found so creating user...")
-            CreateCoverityUser(userToFind)
+            if(GetCoverityRolesFromServer()):
+                CreateCoverityUser(userToFind)
 
     except Exception as ex:
         print ("")
