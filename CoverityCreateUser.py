@@ -258,6 +258,7 @@ def SearchByEmail(emailToSearchFor):
                         print ("")
                         print ("      Email address FOUND.  Username: [" + str(u.username) + "]")
                         userFound = True
+                        GetUserInfo(str(u.username))
                         break
 
                 if (userFound):
@@ -296,10 +297,16 @@ def GetUserInfo(userToGet):
         try:
             v = configSvcClient.client.service.getUser(userToGet)
 
-            print ("   Username : " + str(v.username))
-            print ("   Domain   : " + str(v.domain.name))
-            print ("   Email    : " + str(v.email))
-            print ("   Groups   : " + str(v.groups))
+            print ("-----------------------------------------------------------------")
+            print ("   Username    : " + str(v.username))
+            print ("   Domain      : " + str(v.domain.name))
+            print ("   Email       : " + str(v.email))
+            print ("   Groups      : " + str(v.groups))
+            print ("   Disabled    : " + str(v.disabled))
+            print ("   Locked      : " + str(v.locked))
+            print ("   Created     : " + str(v.dateCreated))
+            print ("   Who Created : " + str(v.userCreated))
+            print ("-----------------------------------------------------------------")
         except Exception as ex:
             if ("No user found for user name " + userToGet + "." in str(ex)):
                 print ("")
@@ -310,6 +317,57 @@ def GetUserInfo(userToGet):
         print ("")
         print ("FAILURE: Configuration Service Client NOT initialized so fail.")
         raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
+
+
+def CreateCoverityUser(userToCreate):
+    """Method to create a Coverity User."""
+
+    if (configSvcClient == ""):
+        InitConfigClient()
+
+    if (configSvcClient != ""):
+        print ("")
+        print("Creating user: " + userToCreate)
+
+        try:
+            if ("@" in userToCreate and "." in userToCreate):
+                userToCreate = input("Enter CORPZONE username to be created: ")
+            
+            userBU = input("Enter the user\'s Business Unit: ")
+            userRole = input("Enter the user\'s Role: ")
+
+            domainIdDO = configSvcClient.client.factory.create('serverDomainIdDataObj')
+            domainIdDO.name = "corpzone"
+
+            groupIdDO = configSvcClient.client.factory.create('groupIdDataObj')
+            groupIdDO.name = [ "Users", userBU + " " + userRole ]
+
+            userIdDO = configSvcClient.client.factory.create('userSpecDataObj')
+            userIdDO.username = userToCreate
+            userIdDO.domain = domainIdDO
+            userIdDO.groupNames = groupIdDO
+            
+            configSvcClient.client.service.createUser(userIdDO)
+
+            print ("   Created Username : " + userToCreate)
+            GetUserInfo(userToCreate)
+
+        except Exception as ex:
+            print ("FAILURE: User [" + userToCreate + "] was NOT create successfully.  Exception: " + str(ex))
+    else:
+        print ("")
+        print ("FAILURE: Configuration Service Client NOT initialized so fail.")
+        raise Exception("FAILURE: Required Service Client was NOT initialized so failing.")
+
+
+def PrintServerInfo():
+    """Method used to print the Coverity information from the CFG file."""
+    print ("")
+    print ("-----------------------------------------------------------------")
+    print ("Coverity Server Name: " + covServer)
+    print ("Coverity Server Port: " + covPort)
+    print ("Coverity Server User: " + covUser)
+    print ("-----------------------------------------------------------------")
 
 
 ###################################################
@@ -323,6 +381,9 @@ ClearScreen()
 if (LoadConfigurationInfo()):
 
     try:
+        PrintServerInfo()
+
+        print ("")
         userToFind = input("Enter the username or email address you wish to find: ")
 
         userNeedsToBeCreated = True
@@ -337,6 +398,9 @@ if (LoadConfigurationInfo()):
                     userNeedsToBeCreated = False
                     GetUserInfo(userToFind)
 
+        if (userNeedsToBeCreated):
+            print ("User was NOT found so creating user...")
+            CreateCoverityUser(userToFind)
 
     except Exception as ex:
         print ("")
