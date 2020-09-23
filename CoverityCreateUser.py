@@ -183,23 +183,24 @@ def SearchByUsername(usernameToSearchFor):
     if (configSvcClient != "" and defectSvcClient != ""):
         userIdDO = configSvcClient.client.factory.create('userFilterSpecDataObj')
         userIdDO.namePattern = usernameToSearchFor
+
         pageSpecDO = defectSvcClient.client.factory.create('pageSpecDataObj')
         pageSpecDO.sortAscending = True
         pageSpecDO.pageSize = pageSizeToUse
         pageSpecDO.startIndex = 0
 
-        v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+        resultingUsers = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
-        if (v.totalNumberOfRecords == 1):
-            print ("   User was found. Username: " + str(v.users[0].username))
+        if (resultingUsers.totalNumberOfRecords == 1):
+            print ("   User was found. Username: " + str(resultingUsers.users[0].username))
             return True
-        elif (v.totalNumberOfRecords > 1):
+        elif (resultingUsers.totalNumberOfRecords > 1):
             print ("   ------------------------------------------")
-            print ("   Total Users Found: " + str(v.totalNumberOfRecords))
+            print ("   Total Users Found: " + str(resultingUsers.totalNumberOfRecords))
             print ("   ------------------------------------------")
             print ("   WARNING: Multiple Users were found as follows:")
-            for u in v.users:
-                print ("   Username: [" + str(u.username) + "]")
+            for user in resultingUsers.users:
+                print ("   Username: [" + str(user.username) + "]")
             print ("   WARNING: Multiple Users were found.")
             return False
         else:
@@ -238,28 +239,28 @@ def SearchByEmail(emailToSearchFor):
         # Call with a single record (pageSize = 1) to get fast and get the totalNumberOfRecords
         pageSpecDO.pageSize = 1
         pageSpecDO.startIndex = 0
-        v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+        resultingUsers = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
-        print ("   Processing [" + str(v.totalNumberOfRecords) + "] User records...")
+        print ("   Processing [" + str(resultingUsers.totalNumberOfRecords) + "] User records...")
 
         userFound = False
         userCount = 0
-        if (v.totalNumberOfRecords > 0):
+        if (resultingUsers.totalNumberOfRecords > 0):
             # Get FIRST batch of user records
             pageSpecDO.pageSize = pageSizeToUse
             pageSpecDO.startIndex = 0
-            v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+            resultingUsers = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
-            while (hasattr(v, 'users')):
-                for u in v.users:
+            while (hasattr(resultingUsers, 'users')):
+                for user in resultingUsers.users:
                     userCount += 1
                     OverwriteConsoleOutput("   Processing # " + str(userCount))
 
-                    if (hasattr(u, 'email') and str(u.email).lower() == emailToSearchFor.lower()):
+                    if (hasattr(user, 'email') and str(user.email).lower() == emailToSearchFor.lower()):
                         print ("")
-                        print ("      Email address FOUND.  Username: [" + str(u.username) + "]")
+                        print ("      Email address FOUND.  Username: [" + str(user.username) + "]")
                         userFound = True
-                        GetUserInfo(str(u.username))
+                        GetUserInfo(str(user.username))
                         break
 
                 if (userFound):
@@ -267,7 +268,7 @@ def SearchByEmail(emailToSearchFor):
 
                 # Get NEXT batch of user records based on pageSizeToUse
                 pageSpecDO.startIndex += pageSizeToUse
-                v = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
+                resultingUsers = configSvcClient.client.service.getUsers(userIdDO, pageSpecDO)
 
         if (userFound):
             return True
@@ -296,17 +297,17 @@ def GetUserInfo(userToGet):
         print("Searching for user: " + userToGet)
 
         try:
-            v = configSvcClient.client.service.getUser(userToGet)
+            resultingUser = configSvcClient.client.service.getUser(userToGet)
 
             print ("-----------------------------------------------------------------")
-            print ("   Username    : " + str(v.username))
-            print ("   Domain      : " + str(v.domain.name))
-            print ("   Email       : " + str(v.email))
-            print ("   Groups      : " + str(v.groups))
-            print ("   Disabled    : " + str(v.disabled))
-            print ("   Locked      : " + str(v.locked))
-            print ("   Created     : " + str(v.dateCreated))
-            print ("   Who Created : " + str(v.userCreated))
+            print ("   Username    : " + str(resultingUser.username))
+            print ("   Domain      : " + str(resultingUser.domain.name))
+            print ("   Email       : " + str(resultingUser.email))
+            print ("   Groups      : " + str(resultingUser.groups))
+            print ("   Disabled    : " + str(resultingUser.disabled))
+            print ("   Locked      : " + str(resultingUser.locked))
+            print ("   Created     : " + str(resultingUser.dateCreated))
+            print ("   Who Created : " + str(resultingUser.userCreated))
             print ("-----------------------------------------------------------------")
         except Exception as ex:
             if ("No user found for user name " + userToGet + "." in str(ex)):
@@ -344,10 +345,10 @@ def GetCoverityRolesFromServer(RoleToLoad):
         pageSpecDO.pageSize = pageSizeToUse
         pageSpecDO.startIndex = 0
 
-        v = configSvcClient.client.service.getGroups(groupIdDO, pageSpecDO)
+        resultingGroups = configSvcClient.client.service.getGroups(groupIdDO, pageSpecDO)
 
-        if (v.totalNumberOfRecords > 1):
-            for group in v.groups:
+        if (resultingGroups.totalNumberOfRecords > 1):
+            for group in resultingGroups.groups:
                 if(str(group.name.name).lower() != "Users".lower()):
                     # print ("      Group: [" + str(group.name.name) + "]")
                     CoverityRoleList.append(group.name.name)
