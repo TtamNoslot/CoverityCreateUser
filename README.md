@@ -1,2 +1,2 @@
 # CoverityCreateUser
- Coverity User Creation App
+ Coverity User Creation Python App
